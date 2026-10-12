@@ -1,2 +1,4 @@
 book.pdf
 AGENTS.md
+__pycache__/
+*.py[cod]
