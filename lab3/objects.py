@@ -1,65 +1,48 @@
-# Здесь рисуем предметы в их собственных координатах.
-# color — цвет RGB: три числа от 0 до 1. Функции ничего не возвращают.
+from OpenGL.GL import glColor3f, glPushMatrix, glPopMatrix, glTranslatef, glRotatef, glScalef
+from OpenGL.GLUT import glutSolidCube, glutSolidCylinder, glutSolidTeapot
 
-from OpenGL.GL import *
-from OpenGL.GLUT import *
+TABLE_TOP = 1.83
 
 
-# Рисует куб, растянутый до размеров width, height, depth, заданным цветом.
-# Центр параллелепипеда находится в начале координат.
-def draw_box(width, height, depth, color=(0.5, 0.5, 0.5)):
-    glColor3f(*color)
+# Рисует растянутый куб: (x, y, z) — центр, size — размеры по трём осям.
+def draw_box(x, y, z, size):
     glPushMatrix()
-    glScalef(width, height, depth)
+    glTranslatef(x, y, z)
+    glScalef(*size)
     glutSolidCube(1)
     glPopMatrix()
 
 
-# Рисует стол заданным цветом: столешницу и четыре ножки.
-# Ножки стоят на Y = 0, верх столешницы находится на Y = 1.4.
-def draw_table(color=(0.35, 0.20, 0.10)):
+# Рисует стол с четырьмя ножками; начало координат — под центром стола на полу.
+def draw_table():
+    glColor3f(0.65, 0.40, 0.20)
+    draw_box(0, 1.75, 0, (2.8, 0.16, 1.8))
+    glColor3f(0.30, 0.30, 0.30)
+    for x in (-1.17, 1.17):
+        for z in (-0.67, 0.67):
+            draw_box(x, 0.835, z, (0.14, 1.67, 0.14))
+
+
+# Рисует книгу одним параллелепипедом; нижняя сторона лежит на Y = 0.
+def draw_book():
+    glColor3f(0.70, 0.15, 0.15)
+    draw_box(0, 0.08, 0, (0.8, 0.16, 0.55))
+
+
+# Рисует ручку одним цилиндром вдоль оси X, лежащим на Y = 0.
+def draw_pen():
     glPushMatrix()
-    glTranslatef(0, 1.34, 0)
-    draw_box(3, 0.12, 1.8, color)
-    glPopMatrix()
-
-    for x in (-1.3, 1.3):
-        for z in (-0.7, 0.7):
-            glPushMatrix()
-            glTranslatef(x, 0.64, z)
-            draw_box(0.14, 1.28, 0.14, color)
-            glPopMatrix()
-
-
-# Рисует лежащую книгу заданным цветом как небольшой параллелепипед.
-# Нижняя поверхность книги находится на Y = 0.
-def draw_book(color=(0.75, 0.12, 0.12)):
-    glPushMatrix()
-    glTranslatef(0, 0.07, 0)
-    draw_box(0.62, 0.14, 0.44, color)
-    glPopMatrix()
-
-
-# Рисует ручку вдоль оси X: цветной цилиндр и тёмный наконечник.
-# Ручка длиной 0.8 касается поверхности Y = 0.
-def draw_pen(color=(0.2, 0.3, 0.8)):
-    glPushMatrix()
-    glTranslatef(-0.4, 0.025, 0)
-    # Цилиндр направлен вдоль Z; поворачиваем его вдоль X.
-    glRotatef(90, 0, 1, 0)
-    glColor3f(*color)
-    glutSolidCylinder(0.025, 0.7, 16, 1)
-    glTranslatef(0, 0, 0.7)
-    glColor3f(0.15, 0.15, 0.15)
-    glutSolidCone(0.025, 0.1, 16, 1)
+    glTranslatef(-0.4, 0.03, 0)
+    glRotatef(90, 0, 1, 0)  # Цилиндр GLUT направлен вдоль Z; поворачиваем вдоль X.
+    glColor3f(0.10, 0.20, 0.80)
+    glutSolidCylinder(0.03, 0.8, 12, 1)
     glPopMatrix()
 
 
-# Рисует готовый чайник freeglut заданным цветом.
-# Поднимаем модель так, чтобы её дно оказалось на Y = 0.
-def draw_teapot(color=(0.15, 0.65, 0.35)):
+# Рисует чайник GLUT; подъём на 0.255 ставит основание модели на Y = 0.
+def draw_teapot():
     glPushMatrix()
-    glColor3f(*color)
-    glTranslatef(0, 0.7875 * 0.2, 0)
-    glutSolidTeapot(0.2)
+    glTranslatef(0, 0.255, 0)
+    glColor3f(0.1, 0.65, 0.5)
+    glutSolidTeapot(0.34)
     glPopMatrix()
