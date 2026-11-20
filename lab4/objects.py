@@ -1,10 +1,12 @@
 from math import pi, sin, cos
 
 from OpenGL.GL import (
-    GL_TEXTURE_2D, GL_QUADS, GL_QUAD_STRIP,
+    GL_TEXTURE_2D, GL_QUADS, GL_QUAD_STRIP, GL_LIGHTING,
+    GL_S, GL_T, GL_TEXTURE_GEN_MODE, GL_SPHERE_MAP,
+    GL_TEXTURE_GEN_S, GL_TEXTURE_GEN_T,
     glColor3f, glPushMatrix, glPopMatrix, glTranslatef, glScalef,
     glEnable, glDisable, glBindTexture, glBegin, glEnd,
-    glNormal3f, glTexCoord2f, glVertex3f,
+    glNormal3f, glTexCoord2f, glVertex3f, glTexGeni,
 )
 from OpenGL.GLUT import glutSolidCube
 
@@ -12,7 +14,7 @@ TABLE_TOP = 1.83
 GLOBE_RADIUS = 0.67
 
 
-# Рисует куб с центром (x, y, z); size — его размеры по трём осям.
+# Рисует куб с центром (x, y, z); size — размер по трём осям.
 def draw_box(x, y, z, size):
     glPushMatrix()
     glTranslatef(x, y, z)
@@ -37,8 +39,7 @@ def draw_surface(texture, vertices, normal, repeat_x=1, repeat_y=1):
     glDisable(GL_TEXTURE_2D)
 
 
-# Рисует стол из прошлой работы и деревянную текстуру на верхней плоскости.
-# wood — номер текстуры. Ножки и толщина столешницы сделаны из кубов.
+# Рисует стол и деревянную текстуру на верхней плоскости.
 def draw_table(wood):
     glColor3f(0.55, 0.32, 0.16)
     draw_box(0, 1.75, 0, (2.8, 0.16, 1.8))
@@ -65,12 +66,18 @@ def sphere_vertex(s, t):
     glVertex3f(x, y, z)
 
 
-# Рисует сферу радиуса radius; texture — номер картинки с картой мира.
-# Сферу строим сами полосами четырёхугольников, без GLU и glutSolidSphere.
-def draw_sphere(radius, texture):
+# Рисует сферу радиуса radius; texture — текстура, mirror — зеркальный режим.
+def draw_sphere(radius, texture, mirror=False):
     glEnable(GL_TEXTURE_2D)
     glBindTexture(GL_TEXTURE_2D, texture)
     glColor3f(1, 1, 1)
+    if mirror:
+        # OpenGL сам задаёт s и t по нормали и направлению на наблюдателя.
+        glTexGeni(GL_S, GL_TEXTURE_GEN_MODE, GL_SPHERE_MAP)
+        glTexGeni(GL_T, GL_TEXTURE_GEN_MODE, GL_SPHERE_MAP)
+        glEnable(GL_TEXTURE_GEN_S)
+        glEnable(GL_TEXTURE_GEN_T)
+        glDisable(GL_LIGHTING)  # Свет уже рассчитан в картинке окружения.
 
     glPushMatrix()
     glScalef(radius, radius, radius)
@@ -85,4 +92,8 @@ def draw_sphere(radius, texture):
         glEnd()
     glPopMatrix()
 
+    if mirror:
+        glDisable(GL_TEXTURE_GEN_S)
+        glDisable(GL_TEXTURE_GEN_T)
+        glEnable(GL_LIGHTING)
     glDisable(GL_TEXTURE_2D)
