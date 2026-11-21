@@ -2,12 +2,13 @@ from math import cos, sin, tau
 
 from OpenGL import GL as gl
 
-from objects import draw_cube, draw_floor, draw_quad
+from objects import cube_vertices, draw_cube, draw_floor, draw_quad
 
 
 STEP_HEIGHT = 0.36
 STEP_DEPTH = 1.15
-STAIR_CUBE = (-0.85, STEP_HEIGHT + 1.05 / 2, 1.18, 1.05)
+MIRROR_CUBE = cube_vertices(-0.55, 0.65, 1.65, 1.3)
+STAIR_CUBE = cube_vertices(-0.85, STEP_HEIGHT + 1.05 / 2, 1.18, 1.05)
 LIGHT_RAY = (1.5, -1, -4.75)
 
 
@@ -26,28 +27,30 @@ def draw_mirror_shape(ellipse):
 # Рисует пол и куб. Эти же объекты видны в отражении.
 def draw_mirror_objects():
     draw_floor(0)
-    draw_cube(-0.55, 0.65, 1.65, 1.3)
+    draw_cube(MIRROR_CUBE)
 
 
 # Рисует стену с зеркалом выбранной формы, отражение и саму сцену.
 def draw_mirror(ellipse):
+    # Форма зеркала записывает единицы в трафарет.
     gl.glEnable(gl.GL_STENCIL_TEST)
     gl.glStencilFunc(gl.GL_ALWAYS, 1, 0xFF)
     gl.glStencilOp(gl.GL_KEEP, gl.GL_KEEP, gl.GL_REPLACE)
 
-    # Цвет зеркала виден там, где нет отражённых объектов. Глубину здесь не записываем.
+    # Голубой фон без записи глубины, чтобы через него было видно отражение.
     gl.glDepthMask(gl.GL_FALSE)
     gl.glColor3f(0.57, 0.73, 0.87)
     draw_mirror_shape(ellipse)
     gl.glDepthMask(gl.GL_TRUE)
 
-    # Отражение меняет знак Z. Трафарет пропускает его только внутри зеркала.
+    # Рисуем отражение там, где в трафарете стоит 1.
     gl.glStencilFunc(gl.GL_EQUAL, 1, 0xFF)
     gl.glPushMatrix()
     gl.glScalef(1, 1, -1)
     draw_mirror_objects()
     gl.glPopMatrix()
 
+    # Стена заполняет область с нулями. Куб и пол рисуются уже без трафарета.
     gl.glStencilFunc(gl.GL_EQUAL, 0, 0xFF)
     gl.glColor3f(0.92, 0.91, 0.87)
     draw_quad(((-3.4, 0, 0), (3.4, 0, 0), (3.4, 3.3, 0), (-3.4, 3.3, 0)))
@@ -55,27 +58,26 @@ def draw_mirror(ellipse):
     draw_mirror_objects()
 
 
-# Возвращает матрицу проекции тени на плоскость n·P + offset = 0.
-# normal — нормаль n к плоскости, лучи параллельны LIGHT_RAY.
-def shadow_matrix(normal, offset):
-    nx, ny, nz = normal
-    lx, ly, lz = LIGHT_RAY
-    dot = nx * lx + ny * ly + nz * lz
-    lx, ly, lz = lx / dot, ly / dot, lz / dot
-
-    # Формула из учебника: Q = P - (n·P + offset) * LIGHT_RAY / dot.
-    # glMultMatrixf принимает элементы подряд по столбцам.
-    return (
-        1 - lx * nx, -ly * nx, -lz * nx, 0,
-        -lx * ny, 1 - ly * ny, -lz * ny, 0,
-        -lx * nz, -ly * nz, 1 - lz * nz, 0,
-        -lx * offset, -ly * offset, -lz * offset, 1,
-    )
+# Возвращает вершины тени куба на плоскости y = level.
+# При vertical=True плоскость вертикальная и задана как z = level.
+def project_shadow(level, vertical):
+    dx, dy, dz = LIGHT_RAY
+    shadow = []
+    for x, y, z in STAIR_CUBE:
+        # t показывает, сколько раз прибавить вектор луча до попадания на грань.
+        if vertical:
+            t = (level - z) / dz
+            shadow.append((x + t * dx, y + t * dy, level))
+        else:
+            t = (level - y) / dy
+            shadow.append((x + t * dx, level, z + t * dz))
+    return shadow
 
 
 # Рисует одну грань лестницы и часть тени на ней.
-# vertices задаёт углы, color — цвет, normal и offset — уравнение плоскости грани.
-def draw_shadow_face(vertices, color, normal, offset):
+# vertices и color задают углы и цвет, level — высоту или координату Z грани.
+def draw_shadow_face(vertices, color, level, vertical=False):
+    # Для каждой грани заново помечаем её видимую область единицами.
     gl.glClear(gl.GL_STENCIL_BUFFER_BIT)
     gl.glEnable(gl.GL_STENCIL_TEST)
     gl.glStencilFunc(gl.GL_ALWAYS, 1, 0xFF)
@@ -88,11 +90,9 @@ def draw_shadow_face(vertices, color, normal, offset):
     gl.glDisable(gl.GL_DEPTH_TEST)
     gl.glStencilFunc(gl.GL_EQUAL, 1, 0xFF)
     gl.glStencilOp(gl.GL_KEEP, gl.GL_KEEP, gl.GL_KEEP)
-    gl.glColor3f(*(component * 0.55 for component in color))
-    gl.glPushMatrix()
-    gl.glMultMatrixf(shadow_matrix(normal, offset))
-    draw_cube(*STAIR_CUBE, shadow=True)
-    gl.glPopMatrix()
+    r, g, b = color
+    gl.glColor3f(0.55 * r, 0.55 * g, 0.55 * b)
+    draw_cube(project_shadow(level, vertical), shadow=True)
     gl.glEnable(gl.GL_DEPTH_TEST)
     gl.glDisable(gl.GL_STENCIL_TEST)
 
@@ -109,7 +109,7 @@ def draw_staircase():
 
         top = ((left, top_y, front_z), (right, top_y, front_z),
                (right, top_y, back_z), (left, top_y, back_z))
-        draw_shadow_face(top, (0.72, 0.75, 0.77), (0, 1, 0), -top_y)
+        draw_shadow_face(top, (0.72, 0.75, 0.77), top_y)
 
         front = ((left, low_y, front_z), (right, low_y, front_z),
                  (right, top_y, front_z), (left, top_y, front_z))
@@ -119,11 +119,11 @@ def draw_staircase():
             gl.glColor3f(*front_color)
             draw_quad(front)
         else:
-            draw_shadow_face(front, front_color, (0, 0, 1), -front_z)
+            draw_shadow_face(front, front_color, front_z, vertical=True)
 
         gl.glColor3f(0.48, 0.52, 0.57)
         for x in (left, right):
             draw_quad(((x, 0, front_z), (x, top_y, front_z),
                        (x, top_y, back_z), (x, 0, back_z)))
 
-    draw_cube(*STAIR_CUBE)
+    draw_cube(STAIR_CUBE)

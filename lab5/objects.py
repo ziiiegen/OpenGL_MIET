@@ -9,25 +9,29 @@ def draw_quad(vertices):
     gl.glEnd()
 
 
-# Рисует пол
+# Рисует пол. back_z задаёт его задний край по оси Z.
 def draw_floor(back_z):
     gl.glColor3f(0.70, 0.72, 0.73)
     draw_quad(((-3.4, 0, back_z), (3.4, 0, back_z), (3.4, 0, 4), (-3.4, 0, 4)))
 
 
-# Рисует куб с центром (x, y, z) и ребром size.
-# Для тени shadow=True оставляет цвет, заданный перед вызовом.
-def draw_cube(x, y, z, size, shadow=False):
-    left, right = x - size / 2, x + size / 2
-    bottom, top = y - size / 2, y + size / 2
-    back, front = z - size / 2, z + size / 2
-    vertices = (
+# Возвращает восемь вершин куба с центром (x, y, z) и ребром size.
+def cube_vertices(x, y, z, size):
+    half = size / 2
+    left, right = x - half, x + half
+    bottom, top = y - half, y + half
+    back, front = z - half, z + half
+    return (
         (left, bottom, back), (right, bottom, back),
         (right, bottom, front), (left, bottom, front),
         (left, top, back), (right, top, back),
         (right, top, front), (left, top, front),
     )
-    # Грани окрашены по-разному, чтобы форма куба читалась с обеих сторон зеркала.
+
+
+# Рисует шесть граней по vertices. При shadow=True используется текущий цвет.
+def draw_cube(vertices, shadow=False):
+    # У каждой грани есть номера четырёх вершин и свой цвет.
     faces = (
         ((0, 1, 2, 3), (0.1, 0.02, 0.123)),
         ((4, 5, 6, 7), (0.2, 0.04, 0.321)),
